@@ -4,10 +4,10 @@
 
 import "./styles.css";
 if (process.env.PRINTER_TYPE == "sla") {
-  import("./sla-styles.css");
+  import("./sla-styles.module.css");
 }
 if (process.env.PRINTER_CODE == "m1") {
-  import("./m1-styles.css");
+  import("./m1-styles.module.css");
 }
 import { navigate, navigateShallow } from "./router.js";
 import printer from "./printer";
@@ -17,8 +17,33 @@ import { translateLabels } from "./locale_provider";
 import { handleError } from "./printer/components/errors";
 import langSelect from "./printer/components/dropdown/language";
 
+declare var __COMMIT_HASH__: string;
+
 const UPDATE_INTERVAL = process.env.UPDATE_INTERVAL;
 let connectionProblem = false;
+
+interface ApiRequest {
+  get: () => Promise<any>,
+  init: boolean,
+  update: boolean,
+  updateInterval?: number,
+  timestamp?: Date,
+}
+
+interface Requests {
+  printer: ApiRequest,
+  profiles: ApiRequest,
+  job: ApiRequest,
+  connection: ApiRequest,
+}
+
+interface Responses {
+    [k: string]: {
+        ok: boolean;
+        payload?: any;
+        error?: any;
+    },
+}
 
 /** Contains setup for global api requests.
  *
@@ -31,7 +56,7 @@ let connectionProblem = false;
  * `updateInterval` - change if you want bigger delay than UPDATE_INTERVAL.
  * Time is only approximate, it is not guaranteed!
  */
-const requests = {
+const requests: Requests = {
   printer: {
     get: () => getJson("/api/printer"),
     init: true,
@@ -53,9 +78,9 @@ const requests = {
   },
   connection: {
     get: () => getJson("/api/connection"),
-    init: process.env.WITH_CONNECTION,
-    update: process.env.WITH_CONNECTION,
-    updateInterval: process.env.CONNECTION_UPDATE_INTERVAL,
+    init: !!process.env.WITH_CONNECTION,
+    update: !!process.env.WITH_CONNECTION,
+    updateInterval: parseInt(process.env.CONNECTION_UPDATE_INTERVAL),
   },
   // version will be passed on init
 };
@@ -86,7 +111,7 @@ async function getRequests(initialized) {
   const promises = Object.values(apiRequests);
   const responses = await Promise.all(
     promises.map((i) =>
-      i
+      (i as Promise<any>)
         .then((payload) => ({ ok: true, payload }))
         .catch((error) => ({ ok: error.code ? false : null, error }))
     )
@@ -103,9 +128,9 @@ window.onload = () => {
   );
   initMenu();
   langSelect.init("lang-dropdown", "lang-dropdown");
-  translateLabels(); // Translate menu and telemetry
+  translateLabels(null); // Translate menu and telemetry
 
-  document.querySelectorAll("a[href]").forEach((link) => {
+  document.querySelectorAll("a[href]").forEach((link: HTMLLinkElement) => {
     link.addEventListener("click", (e) => {
       if (navigate(link.href)) e.preventDefault();
     });
@@ -123,7 +148,7 @@ async function appLoop(version) {
     let apiProblem = false;
 
     try {
-      const responses = await getRequests(initialized);
+      const responses: Responses = (await getRequests(initialized)) as Responses;
       if (responses.printer) connectionProblem = responses.printer.ok === null;
 
       Object.values(responses).forEach(({ ok, error }) => {
@@ -139,7 +164,7 @@ async function appLoop(version) {
         update(responses);
       } else {
         if (!apiProblem) {
-          responses.version = { ok: true, payload: version };
+          responses["version"] = { ok: true, payload: version };
           init(responses);
           initialized = true;
         }
@@ -149,7 +174,7 @@ async function appLoop(version) {
     }
 
     printer.setConnected(!connectionProblem);
-    await new Promise((resolve) => setTimeout(resolve, UPDATE_INTERVAL));
+    await new Promise((resolve) => setTimeout(resolve, parseInt(UPDATE_INTERVAL)));
   }
 }
 
