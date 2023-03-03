@@ -99,7 +99,7 @@ const updateStorageDetails = (storage) => {
   if (isVisible) {
     const free = storage.freeSpace;
     const total = storage.totalSpace;
-    const pct = 1 - (free && total ? free / total : 0);
+    const pct = (free && total ? free / total : 0);
     const space = translate("prop.storage-space", {
       free: formatData("size", free),
       total: formatData("size", total),
