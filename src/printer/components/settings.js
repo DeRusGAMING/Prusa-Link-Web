@@ -203,7 +203,7 @@ function updateConnectionSettings(context, updateInputValue) {
   if (context.connection) {
     updateProperties("con-settings", context.connection);
     updatePrusaConnectStatus(context.connection, updateInputValue);
-    updatePrinterStatus(context.connection);
+    updatePrinterStatus(context.state, context.link);
   }
 }
 
@@ -363,10 +363,10 @@ function updatePrusaConnectStatus(data, updateInputValue) {
   updateConnectionStatus(statusElm, msgElm, ready, message, customMessage);
 }
 
-function updatePrinterStatus(data) {
+function updatePrinterStatus(state, link) {
   const statusElm = document.getElementById("conn-printer-status");
 
-  const { port, baudrate } = data.current;
+  // const { port, baudrate } = data.current;
   const { ok, message } = data.states.printer;
   const msgElm = document.getElementById(
     `conn-printer-status-${ok ? "ok" : "not-ok"}`
